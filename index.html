@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Grind Log</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root{
+    --bg:#181511;
+    --panel:#211d18;
+    --panel-2:#28221b;
+    --line:#3a332a;
+    --ink:#efe9df;
+    --ink-dim:#a89f8f;
+    --ink-faint:#6d6559;
+    --amber:#e0a542;
+    --amber-dim:#8a6a2e;
+    --amber-glow:rgba(224,165,66,0.16);
+    --green:#7bab5e;
+    --red-dim:#8a4a3f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    padding:32px 20px 60px;
+    min-height:100vh;
+  }
+  .wrap{max-width:640px;margin:0 auto;}
+
+  .top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    margin-bottom:6px;
+  }
+  .title{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:26px;
+    letter-spacing:-0.01em;
+  }
+  .date{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--ink-faint);
+    margin-top:2px;
+  }
+  .streak-box{
+    text-align:right;
+  }
+  .streak-num{
+    font-family:'JetBrains Mono',monospace;
+    font-size:30px;
+    font-weight:500;
+    color:var(--amber);
+    line-height:1;
+  }
+  .streak-label{
+    font-size:11px;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    margin-top:4px;
+  }
+
+  .lamp-bar{
+    height:3px;
+    background:var(--line);
+    border-radius:2px;
+    margin:18px 0 30px;
+    overflow:hidden;
+  }
+  .lamp-fill{
+    height:100%;
+    background:var(--amber);
+    box-shadow:0 0 10px 1px var(--amber-glow);
+    border-radius:2px;
+    transition:width 0.4s ease;
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px 18px;
+    margin-bottom:12px;
+  }
+  .card-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .card-left{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    flex:1;
+    min-width:0;
+  }
+  .check{
+    width:26px;height:26px;
+    border-radius:6px;
+    border:1.5px solid var(--ink-faint);
+    background:transparent;
+    cursor:pointer;
+    flex-shrink:0;
+    position:relative;
+    transition:all 0.15s ease;
+  }
+  .check.done{
+    background:var(--amber);
+    border-color:var(--amber);
+  }
+  .check.done::after{
+    content:'';
+    position:absolute;
+    left:8px;top:4px;
+    width:5px;height:10px;
+    border:solid var(--bg);
+    border-width:0 2px 2px 0;
+    transform:rotate(40deg);
+  }
+  .card-text{min-width:0;}
+  .card-name{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:15px;
+  }
+  .card-topic{
+    font-size:12px;
+    color:var(--amber-dim);
+    margin-top:1px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .card-note{
+    width:100%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:6px;
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    padding:8px 10px;
+    margin-top:10px;
+    resize:none;
+    outline:none;
+  }
+  .card-note::placeholder{color:var(--ink-faint);}
+  .card-note:focus{border-color:var(--amber-dim);}
+  select.card-note{
+    color:var(--ink);
+    -webkit-appearance:none;
+    appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23a89f8f'/></svg>");
+    background-repeat:no-repeat;
+    background-position:right 12px center;
+    padding-right:30px;
+  }
+
+  .count-pill{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--ink-dim);
+    white-space:nowrap;
+  }
+
+  .week{
+    margin-top:26px;
+  }
+  .week-label{
+    font-size:11px;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    margin-bottom:10px;
+  }
+  .week-grid{
+    display:grid;
+    grid-template-columns:70px repeat(7,1fr);
+    row-gap:8px;
+    align-items:center;
+  }
+  .week-row-label{
+    font-size:11px;
+    color:var(--ink-dim);
+  }
+  .dot{
+    width:16px;height:16px;
+    border-radius:4px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    margin:0 auto;
+  }
+  .dot.on{
+    background:var(--amber);
+    border-color:var(--amber);
+  }
+  .dot.today{
+    border-color:var(--ink-dim);
+  }
+  .day-init{
+    text-align:center;
+    font-size:10px;
+    color:var(--ink-faint);
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  .reset{
+    margin-top:28px;
+    text-align:center;
+  }
+  .reset button{
+    background:none;
+    border:none;
+    color:var(--ink-faint);
+    font-size:11px;
+    cursor:pointer;
+    text-decoration:underline;
+  }
+  .msg{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-faint);
+    margin-top:8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="title">Grind log</div>
+      <div class="date" id="today-date"></div>
+    </div>
+    <div class="streak-box">
+      <div class="streak-num" id="streak-num">0</div>
+      <div class="streak-label">day streak</div>
+    </div>
+  </div>
+
+  <div class="lamp-bar"><div class="lamp-fill" id="lamp-fill" style="width:0%"></div></div>
+
+  <div class="card" id="card-dsa">
+    <div class="card-head">
+      <div class="card-left">
+        <button class="check" id="check-dsa"></button>
+        <div class="card-text">
+          <div class="card-name">DSA</div>
+          <div class="card-topic" id="topic-dsa"></div>
+        </div>
+      </div>
+      <div class="count-pill" id="count-dsa"></div>
+    </div>
+    <textarea class="card-note" id="note-dsa" rows="1" placeholder="what did you solve today?"></textarea>
+  </div>
+
+  <div class="card" id="card-proj">
+    <div class="card-head">
+      <div class="card-left">
+        <button class="check" id="check-proj"></button>
+        <div class="card-text">
+          <div class="card-name">Projects</div>
+          <div class="card-topic" id="topic-proj">today's task</div>
+        </div>
+      </div>
+      <div class="count-pill" id="count-proj"></div>
+    </div>
+    <select class="card-note" id="select-proj" style="margin-top:10px; cursor:pointer;">
+      <option value="portfolio">Portfolio site</option>
+      <option value="subtracker">Subscription tracker</option>
+      <option value="mediot">MedIoT Shield mini</option>
+    </select>
+    <div class="card-topic" id="proj-blurb" style="margin-top:8px; font-family:'Inter',sans-serif; color:var(--ink-dim); line-height:1.5;"></div>
+    <textarea class="card-note" id="note-proj" rows="1" placeholder="what did you actually do?"></textarea>
+  </div>
+
+  <div class="card" id="card-apt">
+    <div class="card-head">
+      <div class="card-left">
+        <button class="check" id="check-apt"></button>
+        <div class="card-text">
+          <div class="card-name">Aptitude</div>
+          <div class="card-topic" id="topic-apt"></div>
+        </div>
+      </div>
+      <div class="count-pill" id="count-apt"></div>
+    </div>
+    <textarea class="card-note" id="note-apt" rows="1" placeholder="notes (optional)"></textarea>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Last 7 days</div>
+    <div class="week-grid" id="week-grid"></div>
+  </div>
+
+  <div class="reset">
+    <button id="reset-btn">clear all data</button>
+  </div>
+  <div class="msg" id="save-msg"></div>
+</div>
+
+<script>
+const DSA_TOPICS = ["Arrays","Strings","Hashmaps","Two pointers","Trees","Graphs","Dynamic programming"];
+const APT_TOPICS = ["Percentages","Profit & loss","Time & work","Time, speed, distance","Permutations & combinations","Averages & ratios","Number systems"];
+const PROJ_BLURBS = {
+  portfolio: "Personal site — projects, resume, contact. Keep scope tight: hero, project cards, one clear CTA. Deploy on Vercel.",
+  subtracker: "Full-stack CRUD app — recurring subscriptions, renewal dates, spend tracking, optional email reminders. Good interview talking point for end-to-end ownership.",
+  mediot: "Anomaly detection on medical IoT telemetry, same shape as NetSentry: rule-based checks + K-Means/Isolation Forest on a simulated vitals stream. Reuse your hackathon MedIoT Shield approach."
+};
+
+function pad(n){ return n<10 ? "0"+n : ""+n; }
+function fmtDate(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function dayLabel(d){ return d.toLocaleDateString('en-US',{weekday:'short'}); }
+
+const todayObj = new Date();
+const todayKey = fmtDate(todayObj);
+document.getElementById('today-date').textContent = todayObj.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+
+let log = {};
+let startDateKey = null;
+const STORAGE_KEY = 'grind-log-data';
+const START_KEY = 'grind-log-start';
+
+async function loadData(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY);
+    log = res && res.value ? JSON.parse(res.value) : {};
+  }catch(e){ log = {}; }
+  try{
+    const res2 = await window.storage.get(START_KEY);
+    startDateKey = res2 && res2.value ? res2.value : null;
+  }catch(e){ startDateKey = null; }
+  if(!startDateKey){
+    startDateKey = todayKey;
+    try{ await window.storage.set(START_KEY, startDateKey); }catch(e){}
+  }
+  render();
+}
+
+async function saveLog(){
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(log));
+    const m = document.getElementById('save-msg');
+    m.textContent = 'saved';
+    setTimeout(()=>{ if(m.textContent==='saved') m.textContent=''; }, 1200);
+  }catch(e){
+    document.getElementById('save-msg').textContent = 'could not save — try again';
+  }
+}
+
+function getEntry(key){
+  if(!log[key]) log[key] = {dsa:false, projects:false, aptitude:false, dsaNote:'', projNote:'', aptNote:'', projectName:'portfolio'};
+  return log[key];
+}
+
+function dsaBlocksSinceStart(){
+  const start = new Date(startDateKey);
+  const diffDays = Math.floor((todayObj - start) / 86400000);
+  return Math.floor(diffDays / 4);
+}
+
+function dayIndexSinceStart(){
+  const start = new Date(startDateKey);
+  return Math.floor((todayObj - start) / 86400000);
+}
+
+function computeStreak(){
+  let streak = 0;
+  let d = new Date(todayObj);
+  while(true){
+    const key = fmtDate(d);
+    const e = log[key];
+    if(e && e.dsa && e.projects && e.aptitude){
+      streak++;
+      d.setDate(d.getDate()-1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+function countTotal(field){
+  let c = 0;
+  for(const k in log){ if(log[k][field]) c++; }
+  return c;
+}
+
+function render(){
+  const entry = getEntry(todayKey);
+
+  document.getElementById('topic-dsa').textContent = "this block: " + DSA_TOPICS[dsaBlocksSinceStart() % DSA_TOPICS.length];
+  document.getElementById('topic-apt').textContent = "today: " + APT_TOPICS[dayIndexSinceStart() % APT_TOPICS.length];
+
+  document.getElementById('check-dsa').classList.toggle('done', entry.dsa);
+  document.getElementById('check-proj').classList.toggle('done', entry.projects);
+  document.getElementById('check-apt').classList.toggle('done', entry.aptitude);
+
+  document.getElementById('note-dsa').value = entry.dsaNote || '';
+  document.getElementById('note-proj').value = entry.projNote || '';
+  document.getElementById('note-apt').value = entry.aptNote || '';
+
+  const projSel = document.getElementById('select-proj');
+  projSel.value = entry.projectName || 'portfolio';
+  document.getElementById('proj-blurb').textContent = PROJ_BLURBS[projSel.value];
+
+  document.getElementById('count-dsa').textContent = countTotal('dsa') + ' days total';
+  document.getElementById('count-proj').textContent = countTotal('projects') + ' days total';
+  document.getElementById('count-apt').textContent = countTotal('aptitude') + ' days total';
+
+  const streak = computeStreak();
+  document.getElementById('streak-num').textContent = streak;
+  const pct = Math.min(streak / 14, 1) * 100;
+  document.getElementById('lamp-fill').style.width = pct + '%';
+
+  renderWeek();
+}
+
+function renderWeek(){
+  const grid = document.getElementById('week-grid');
+  grid.innerHTML = '';
+  grid.appendChild(document.createElement('div'));
+  const days = [];
+  for(let i=6;i>=0;i--){
+    const d = new Date(todayObj);
+    d.setDate(d.getDate()-i);
+    days.push(d);
+  }
+  days.forEach(d=>{
+    const el = document.createElement('div');
+    el.className = 'day-init';
+    el.textContent = dayLabel(d)[0];
+    grid.appendChild(el);
+  });
+  const rows = [['DSA','dsa'],['Proj','projects'],['Apt','aptitude']];
+  rows.forEach(([label, field])=>{
+    const lab = document.createElement('div');
+    lab.className = 'week-row-label';
+    lab.textContent = label;
+    grid.appendChild(lab);
+    days.forEach(d=>{
+      const key = fmtDate(d);
+      const e = log[key];
+      const dot = document.createElement('div');
+      dot.className = 'dot' + (e && e[field] ? ' on':'') + (key===todayKey ? ' today':'');
+      grid.appendChild(dot);
+    });
+  });
+}
+
+document.getElementById('check-dsa').addEventListener('click', ()=>{
+  const e = getEntry(todayKey);
+  e.dsa = !e.dsa;
+  saveLog();
+  render();
+});
+document.getElementById('check-proj').addEventListener('click', ()=>{
+  const e = getEntry(todayKey);
+  e.projects = !e.projects;
+  saveLog();
+  render();
+});
+document.getElementById('check-apt').addEventListener('click', ()=>{
+  const e = getEntry(todayKey);
+  e.aptitude = !e.aptitude;
+  saveLog();
+  render();
+});
+
+document.getElementById('note-dsa').addEventListener('input', (ev)=>{
+  getEntry(todayKey).dsaNote = ev.target.value;
+});
+document.getElementById('note-dsa').addEventListener('blur', saveLog);
+document.getElementById('note-proj').addEventListener('input', (ev)=>{
+  getEntry(todayKey).projNote = ev.target.value;
+});
+document.getElementById('note-proj').addEventListener('blur', saveLog);
+
+document.getElementById('select-proj').addEventListener('change', (ev)=>{
+  getEntry(todayKey).projectName = ev.target.value;
+  document.getElementById('proj-blurb').textContent = PROJ_BLURBS[ev.target.value];
+  saveLog();
+});
+document.getElementById('note-apt').addEventListener('input', (ev)=>{
+  getEntry(todayKey).aptNote = ev.target.value;
+});
+document.getElementById('note-apt').addEventListener('blur', saveLog);
+
+document.getElementById('reset-btn').addEventListener('click', async ()=>{
+  if(!confirm('Clear all logged days? This cannot be undone.')) return;
+  log = {};
+  await saveLog();
+  render();
+});
+
+loadData();
+</script>
+</body>
+</html>
