@@ -328,23 +328,22 @@ const START_KEY = 'grind-log-start';
 
 async function loadData(){
   try{
-    const res = await window.storage.get(STORAGE_KEY);
-    log = res && res.value ? JSON.parse(res.value) : {};
+    const raw = localStorage.getItem(STORAGE_KEY);
+    log = raw ? JSON.parse(raw) : {};
   }catch(e){ log = {}; }
   try{
-    const res2 = await window.storage.get(START_KEY);
-    startDateKey = res2 && res2.value ? res2.value : null;
+    startDateKey = localStorage.getItem(START_KEY);
   }catch(e){ startDateKey = null; }
   if(!startDateKey){
     startDateKey = todayKey;
-    try{ await window.storage.set(START_KEY, startDateKey); }catch(e){}
+    try{ localStorage.setItem(START_KEY, startDateKey); }catch(e){}
   }
   render();
 }
 
 async function saveLog(){
   try{
-    await window.storage.set(STORAGE_KEY, JSON.stringify(log));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(log));
     const m = document.getElementById('save-msg');
     m.textContent = 'saved';
     setTimeout(()=>{ if(m.textContent==='saved') m.textContent=''; }, 1200);
