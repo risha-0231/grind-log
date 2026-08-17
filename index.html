@@ -228,6 +228,70 @@
     color:var(--ink-faint);
     margin-top:8px;
   }
+
+  .history-toggle{
+    display:block;
+    width:100%;
+    margin-top:26px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--ink-dim);
+    font-family:'Space Grotesk',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    padding:12px;
+    border-radius:8px;
+    cursor:pointer;
+    text-align:center;
+  }
+  .history-toggle:hover{ border-color:var(--amber-dim); color:var(--ink); }
+
+  .history-panel{
+    margin-top:12px;
+    display:none;
+  }
+  .history-panel.open{ display:block; }
+
+  .history-entry{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-left:3px solid var(--amber-dim);
+    border-radius:8px;
+    padding:12px 16px;
+    margin-bottom:10px;
+  }
+  .history-date{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--ink);
+    margin-bottom:8px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .history-badges{
+    display:flex;
+    gap:5px;
+  }
+  .history-badge{
+    width:8px;height:8px;
+    border-radius:2px;
+    background:var(--line);
+  }
+  .history-badge.on{ background:var(--amber); }
+  .history-row{
+    font-size:12px;
+    color:var(--ink-dim);
+    margin-top:5px;
+    line-height:1.5;
+  }
+  .history-row b{ color:var(--ink); font-weight:600; }
+  .history-empty{
+    text-align:center;
+    color:var(--ink-faint);
+    font-size:12px;
+    padding:20px 0;
+  }
 </style>
 </head>
 <body>
@@ -271,9 +335,6 @@
       <div class="count-pill" id="count-proj"></div>
     </div>
     <select class="card-note" id="select-proj" style="margin-top:10px; cursor:pointer;">
-      <option value="portfolio">Portfolio site</option>
-      <option value="subtracker">Subscription tracker</option>
-      <option value="mediot">MedIoT Shield mini</option>
     </select>
     <div class="card-topic" id="proj-blurb" style="margin-top:8px; font-family:'Inter',sans-serif; color:var(--ink-dim); line-height:1.5;"></div>
     <textarea class="card-note" id="note-proj" rows="1" placeholder="what did you actually do?"></textarea>
@@ -302,16 +363,49 @@
     <button id="reset-btn">clear all data</button>
   </div>
   <div class="msg" id="save-msg"></div>
+
+  <button class="history-toggle" id="history-toggle">view past days</button>
+  <div class="history-panel" id="history-panel"></div>
 </div>
 
 <script>
 const DSA_TOPICS = ["Arrays","Strings","Hashmaps","Two pointers","Trees","Graphs","Dynamic programming"];
 const APT_TOPICS = ["Percentages","Profit & loss","Time & work","Time, speed, distance","Permutations & combinations","Averages & ratios","Number systems"];
-const PROJ_BLURBS = {
-  portfolio: "Personal site — projects, resume, contact. Keep scope tight: hero, project cards, one clear CTA. Deploy on Vercel.",
-  subtracker: "Full-stack CRUD app — recurring subscriptions, renewal dates, spend tracking, optional email reminders. Good interview talking point for end-to-end ownership.",
-  mediot: "Anomaly detection on medical IoT telemetry, same shape as NetSentry: rule-based checks + K-Means/Isolation Forest on a simulated vitals stream. Reuse your hackathon MedIoT Shield approach."
+const DEFAULT_PROJECTS = {
+  portfolio: {name:"Portfolio site", blurb:"Personal site — projects, resume, contact. Keep scope tight: hero, project cards, one clear CTA. Deploy on Vercel."},
+  subtracker: {name:"Subscription tracker", blurb:"Full-stack CRUD app — recurring subscriptions, renewal dates, spend tracking, optional email reminders. Good interview talking point for end-to-end ownership."},
+  mediot: {name:"MedIoT Shield mini", blurb:"Anomaly detection on medical IoT telemetry, same shape as NetSentry: rule-based checks + K-Means/Isolation Forest on a simulated vitals stream. Reuse your hackathon MedIoT Shield approach."}
 };
+const PROJECTS_KEY = 'grind-log-projects';
+let PROJECTS = {};
+
+function loadProjects(){
+  try{
+    const raw = localStorage.getItem(PROJECTS_KEY);
+    PROJECTS = raw ? JSON.parse(raw) : {...DEFAULT_PROJECTS};
+  }catch(e){ PROJECTS = {...DEFAULT_PROJECTS}; }
+  if(!PROJECTS || Object.keys(PROJECTS).length===0) PROJECTS = {...DEFAULT_PROJECTS};
+}
+
+function saveProjects(){
+  try{ localStorage.setItem(PROJECTS_KEY, JSON.stringify(PROJECTS)); }catch(e){}
+}
+
+function populateProjectSelect(selectedId){
+  const sel = document.getElementById('select-proj');
+  sel.innerHTML = '';
+  Object.keys(PROJECTS).forEach(id=>{
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = PROJECTS[id].name;
+    sel.appendChild(opt);
+  });
+  const addOpt = document.createElement('option');
+  addOpt.value = '__add__';
+  addOpt.textContent = '+ Add new project';
+  sel.appendChild(addOpt);
+  if(selectedId && PROJECTS[selectedId]) sel.value = selectedId;
+}
 
 function pad(n){ return n<10 ? "0"+n : ""+n; }
 function fmtDate(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
@@ -327,6 +421,7 @@ const STORAGE_KEY = 'grind-log-data';
 const START_KEY = 'grind-log-start';
 
 async function loadData(){
+  loadProjects();
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     log = raw ? JSON.parse(raw) : {};
@@ -404,9 +499,10 @@ function render(){
   document.getElementById('note-proj').value = entry.projNote || '';
   document.getElementById('note-apt').value = entry.aptNote || '';
 
-  const projSel = document.getElementById('select-proj');
-  projSel.value = entry.projectName || 'portfolio';
-  document.getElementById('proj-blurb').textContent = PROJ_BLURBS[projSel.value];
+  let selectedProj = entry.projectName;
+  if(!PROJECTS[selectedProj]) selectedProj = Object.keys(PROJECTS)[0];
+  populateProjectSelect(selectedProj);
+  document.getElementById('proj-blurb').textContent = PROJECTS[selectedProj] ? PROJECTS[selectedProj].blurb : '';
 
   document.getElementById('count-dsa').textContent = countTotal('dsa') + ' days total';
   document.getElementById('count-proj').textContent = countTotal('projects') + ' days total';
@@ -481,8 +577,23 @@ document.getElementById('note-proj').addEventListener('input', (ev)=>{
 document.getElementById('note-proj').addEventListener('blur', saveLog);
 
 document.getElementById('select-proj').addEventListener('change', (ev)=>{
+  if(ev.target.value === '__add__'){
+    const name = prompt('New project name:');
+    if(!name || !name.trim()){
+      render();
+      return;
+    }
+    const blurb = prompt('One-line scope reminder (optional):') || '';
+    const id = 'proj_' + Date.now();
+    PROJECTS[id] = {name: name.trim(), blurb: blurb.trim()};
+    saveProjects();
+    getEntry(todayKey).projectName = id;
+    saveLog();
+    render();
+    return;
+  }
   getEntry(todayKey).projectName = ev.target.value;
-  document.getElementById('proj-blurb').textContent = PROJ_BLURBS[ev.target.value];
+  document.getElementById('proj-blurb').textContent = PROJECTS[ev.target.value] ? PROJECTS[ev.target.value].blurb : '';
   saveLog();
 });
 document.getElementById('note-apt').addEventListener('input', (ev)=>{
@@ -495,6 +606,72 @@ document.getElementById('reset-btn').addEventListener('click', async ()=>{
   log = {};
   await saveLog();
   render();
+  renderHistory();
+});
+
+function renderHistory(){
+  const panel = document.getElementById('history-panel');
+  const keys = Object.keys(log).filter(k => k !== todayKey).sort().reverse();
+  if(keys.length === 0){
+    panel.innerHTML = '<div class="history-empty">No past days logged yet.</div>';
+    return;
+  }
+  panel.innerHTML = '';
+  keys.forEach(key=>{
+    const e = log[key];
+    const d = new Date(key);
+    const wrap = document.createElement('div');
+    wrap.className = 'history-entry';
+
+    const dateRow = document.createElement('div');
+    dateRow.className = 'history-date';
+    const dateLabel = document.createElement('span');
+    dateLabel.textContent = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    const badges = document.createElement('div');
+    badges.className = 'history-badges';
+    ['dsa','projects','aptitude'].forEach(f=>{
+      const b = document.createElement('div');
+      b.className = 'history-badge' + (e[f] ? ' on' : '');
+      badges.appendChild(b);
+    });
+    dateRow.appendChild(dateLabel);
+    dateRow.appendChild(badges);
+    wrap.appendChild(dateRow);
+
+    if(e.dsaNote){
+      const r = document.createElement('div');
+      r.className = 'history-row';
+      r.innerHTML = '<b>DSA:</b> ' + escapeHtml(e.dsaNote);
+      wrap.appendChild(r);
+    }
+    if(e.projNote){
+      const projName = PROJECTS[e.projectName] ? PROJECTS[e.projectName].name : 'Project';
+      const r = document.createElement('div');
+      r.className = 'history-row';
+      r.innerHTML = '<b>' + escapeHtml(projName) + ':</b> ' + escapeHtml(e.projNote);
+      wrap.appendChild(r);
+    }
+    if(e.aptNote){
+      const r = document.createElement('div');
+      r.className = 'history-row';
+      r.innerHTML = '<b>Aptitude:</b> ' + escapeHtml(e.aptNote);
+      wrap.appendChild(r);
+    }
+    panel.appendChild(wrap);
+  });
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+document.getElementById('history-toggle').addEventListener('click', ()=>{
+  const panel = document.getElementById('history-panel');
+  const isOpen = panel.classList.toggle('open');
+  document.getElementById('history-toggle').textContent = isOpen ? 'hide past days' : 'view past days';
+  if(isOpen) renderHistory();
 });
 
 loadData();
